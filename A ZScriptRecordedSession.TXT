@@ -1,0 +1,48 @@
+//RECORDED ZSCRIPT 2021
+[vardef, ZFILEUTILDLL, [FileNameResolvePath,"Dll\ZFileUtils64.dll"]]
+[VarDef, ZBCDLL, [FileNameResolvePath,"Dll\zbc.dll"]]
+[VarDef,LOGPATH,  [FileNameResolvePath,"D:\Program Files\Pixologic\ZBrush 2021\ZScripts\logs\logzb.txt"]]
+<zscriptinsert,"include\TpqzLog.txt">
+[VarDef, gResult,""]
+
+
+[RoutineDef, GetCurrentSubtoolName,
+    [VarSet, gResult,""]
+    [RoutineCall,LogMessage,[StrMerge,"----GetCurrentSubtoolName ","---"]]
+    [VarSet,id,[SubToolGetActiveIndex]]
+    [RoutineCall,LogMessage,[StrMerge,"----id ",id]]
+	[VarSet,gResult,[IGetTitle,Tool:ItemInfo]]//gets the tool name
+    [RoutineCall,LogMessage,[StrMerge,"----gResult ",gResult]]
+	[VarSet,gResult,[StrExtract,gResult,0,[StrLength,gResult]-2]]//trims off period at the end	
+     [RoutineCall,LogMessage,[StrMerge,"----gResult ",gResult]]
+]
+
+
+
+[RoutineCall,LogMessage,[StrMerge,"----start log ","----"]]
+[IButton,"testme","ttt",
+[RoutineCall,LogMessage,[StrMerge,"----testme ","----"]]
+[RoutineCall, GetCurrentSubtoolName]
+[RoutineCall,LogMessage,[StrMerge,"----filename ",gResult]]
+[VarSet, filename,gResult]
+[IPress,Tool:SubTool:Duplicate]
+//[IPress,Tool:SubTool:Rename]
+ //[VarSet,buttonPath,gResult]
+ // [If, (([IExists, buttonPath]) && ([IsEnabled, buttonPath])),
+//	[FileExecute, [Var, ZFILEUTILDLL], RenameSetNext, filename]
+	//[IPress, filename]
+  //]	
+[IPress,Zplugin:Decimation Master:Use and Keep Polypaint]
+//[IPress,Zplugin:Decimation Master:Pre-process Current]
+//[IPress,Zplugin:Decimation Master:Decimate Current ]
+[IUnPress,Zplugin:UV Master:Symmetry]
+[IPress,Zplugin:UV Master:  Unwrap]
+[IPress,Tool:Texture Map:New From Polypaint]
+[IPress,Tool:Texture Map:Clone Txtr]
+[IPress,Texture:aname]
+	[RoutineCall,LogMessage,[StrMerge," filename EXPORT ",[FileNameResolvePath,[strmerge,folderName,filename,".psd"] ]]]
+[FileNameSetNext, [FileNameResolvePath,[strmerge,folderName,filename,".psd"] ]]
+[IPress,Texture:Export]
+]/*End of ZScript*/
+
+

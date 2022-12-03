@@ -1,0 +1,195 @@
+[vardef,batchFolderPath,""] 
+[vardef, ZFILEUTILDLL, [FileNameResolvePath,"Dll\ZFileUtils64.dll"]]
+[VarDef, ZBCDLL, [FileNameResolvePath,"Dll\zbc.dll"]]
+[VarDef,LOGPATH,  [FileNameResolvePath,"D:\Program Files\Pixologic\ZBrush 2021\ZScripts\logs\logzb.txt"]]
+[vardef, DLLFUNCTION, "LaunchAppWithFile"]
+<zscriptinsert,"include\TpqzLog.txt">
+
+
+[vardef, imageMagickExe, [FileNameResolvePath,"bin\imageMagick\convert.exe"]]
+
+[vardef,MTAILPATH, [FileNameResolvePath,"ZBRUSH_ZScripts\Software\mTail.exe"]]
+
+
+[VarDef,NEWLINE,[StrMerge,[StrFromAsc,13],[StrFromAsc,10]]]
+[vardef,QUOTES,[StrFromAsc,34]]
+
+[VarDef, gResult,0]
+[RoutineDef,CheckIsFile,//routine to check if it's a file (not a folder)
+		[VarSet,isF,0]
+		[VarSet,fileExt,""]		
+		[If,([StrLength,file]>2),//we'll assume the file name is at least 2 chars			
+			[VarSet,fileExt,[FileNameExtract,file,4]]//and the file has an extension			
+			[If,[StrLength,fileExt],[VarSet,isF,1]]		
+		]	
+,isF,file]	
+
+[RoutineDef, StrEquals,
+	[VarSet, gResult,0]
+[If,
+	([StrFind,str1,str2 ]>-1) && ([StrLength, str1]==[StrLength, str2])
+	,
+	[VarSet, gResult,1]
+	,
+	[VarSet, gResult,0]
+]
+,str1,str2]
+
+
+[RoutineDef,GetFiles,
+	[RoutineCall,LogMessage,shortFileName]
+	[VarSet,fileIndex,0]
+	[VarSet,folderIndex,0]
+	//ask the user for a file so that we can get the folder it is in
+    [VarSet,fileName,""]
+	[VarDef,i,0]
+		[VarSet,folderName,[FileNameResolvePath,folderName]]
+		[VarSet,fileCount,[FileExecute,[Var,ZFILEUTILDLL],"GetFileNumber",folderName]]//get the number of files/folders
+		[If,fileCount < 0,[Note,"Error getting number of files in folder"]]
+		//if we have some files
+		[If, fileCount > 0,
+			//open the folder
+
+			[VarSet,err,[FileExecute,[Var,ZFILEUTILDLL],"OpenFolder",folderName]]
+			//if we can't open the folder exit the zscript
+			[If,err,[Note,"Error opening folder."][Exit]]
+			//create a memblock to get the file name
+			[MemCreate,ZFileUtils_list, 256, 0]
+			[Loop,fileCount,//loop through the files
+				//get the filename
+				[VarSet,err,[FileExecute,[Var,ZFILEUTILDLL],"GetFile",,,ZFileUtils_list]]	
+				//an error means we've reached the end of the list, so exit the loop	
+				[If,err,[LoopExit]]
+				//otherwise write the file name from the memblock to a variable
+				[MemReadString, ZFileUtils_list,fileName]
+          
+				[VarSet,isaFile,0]
+				//check if it's a file	
+				[RoutineCall,CheckIsFile,isaFile,fileName]
+				//if it's a file	
+				[If,isaFile,
+					//increment the number of files
+				
+					//display the file name
+					[If,(fileIndex+folderIndex <= 200),//just list the first 200 files&folders
+						// do not treat zpr
+						[VarSet,fileExt,[FileNameExtract,fileName,4]]
+					//	[VarSet,fileName,[StrExtract, fileName,1,[StrLength,fileName]-5]]
+						[RoutineCall, StrEquals,[StrLower,fileExt],".ztl"] // for ztl only, for zpr, set a if and load via file menu
+						[if, gResult==1,
+						//[Note,fileName]
+							[FileNameSetNext, [FileNameResolvePath,[strmerge,folderName,fileName] ]]
+							[IPress,Tool:Load Tool]
+						///************************************************************
+						// Start process here (put it in a routine it's cleaner)
+						//************************************************************
+							[VarSet,shortFileName,[StrExtract, fileName,1,[StrLength,fileName]-5]]
+							//[VarSet,arrayOfFile(i),shortFileName]
+						//	[RoutineCall,LogMessage,[StrMerge," arrayOfFile ",i," ",arrayOfFile(i)]]
+							[RoutineCall,process,shortFileName]
+						]						
+				
+					]
+						[VarInc, fileIndex]
+					[VarInc, i]
+				]//end if it is a file
+			]//end loop
+			//delete the memblock as we've done with it
+			[MemDelete,ZFileUtils_list]
+			//***must close the folder***
+			[VarSet,err,[FileExecute,[Var,ZFILEUTILDLL],"CloseFolder",folderName]]
+			[If,err,[Note,"Error closing folder."]]		
+		]//end if file number >0	
+,folderName,arrayOfFile] // normaly i would put an array here to treat the files
+
+[RoutineDef,FolderDialog,
+  [VarDef,folderPath,""]
+  //create memblock to get the path
+  [If,[MemGetSize,MC_FolderPath],,
+    [MemCreate,MC_FolderPath,256,0]
+  ]
+  [VarSet,err,[FileExecute, [Var,ZFILEUTILDLL],ChooseFolder,,,MC_FolderPath]]
+  [If,err,
+    [Note,err]//function will return -1 if no folder chosen
+  ,
+    [MemReadString,MC_FolderPath,folderPath,0,1]
+	[VarSet, batchFolderPath,folderPath]
+  ]
+  [MemDelete,MC_FolderPath]
+]
+
+[RoutineDef,Setup,
+	[IReset,,2021]
+	[IPress,Tool:SimpleBrush]
+	[IPress,Tool:PolyMesh3D]
+	[CanvasStroke,(ZObjStrokeV02n119=H296V122H295V124H291V145H291V146H291V14BH293V151H294V157H294V158H295V15FH295V160H295V167H297V16CH297V171H298V176H298V17AH298V17BH299V17CH299V17EH299V182H29AV184H29BV188H29BV189H29CV189H29CV18AH29CV18DH29DV191H29DV192H29DV196H29FV19AH2A0V19EH2A0V19FH2A0V1A3H2A0V1A7H2A0V1AAH2A0V1AEH2A0V1B1H2A0V1B3H2A0V1B4H2A0V1B5H2A0V1B7H29FV1B8H29FV1BAH29FV1BCH29FV1BFH29FV1C2H29FV1C3H29EV1C3H29EV1C4H29EV1C5H29EV1C6H29EV1C7H29EV1C8H29FV1C8H2A0V1C8H2A1V1C8H2A1V1C7H2A0V1CBH29EV1CCH29EV1CDH29DV1CFH29CV1D0H29BV1D0H29BV1D1H29AV1D1H29AV1D2H299V1D3YH296V1D3K1XH296V1D4H296V1D4H296v1D4FFH296V1D6H296V1D7H296v1D6FFH296V1D8H296V1D9H296V1DBH296V1DCH296V1DDH296v1DDFFH296V1DFH296V1E1H296V1E2H296V1E3H296V1E4H296V1E5H296V1E6H296V1E6H296V1E7H296V1E8H296V1E9H296V1EAH296V1EBH296V1ECH296v1ECFFH296V1EEH296V1EFH296V1F0
+	H296V1F1H296V1F2H296v1F2FFH296V1F4H296V1F5H296V1F6H296V1F7H296V1F8H296V1FAH296V1FBH296V1FCH296V1FDH296V1FEH296V1FFH296V200H296v200FFH296V202H296V203H296V203H296V203H296V203H296V203)]
+	[IPress,Tool:Deformation:Unify]
+	[IPress,Transform: Edit]
+]
+
+[RoutineDef, StrReplace,
+[VarSet, i,0]
+[VarSet, start,0]
+[VarSet, end,0]
+[VarSet, accumulator,""]
+[VarSet, current,""]
+[VarSet, gResult,""]
+[Loop,[StrLength,string],
+		[VarSet, current,[StrExtract, string,start,end]]
+		[if,[StrFind, current,charToReplace]==0,
+			[VarSet, accumulator, [strmerge,accumulator,char]]
+			,
+		 	[VarSet, accumulator, [strmerge,accumulator,current]]
+		]
+	[VarSet, start,i+1]
+	[VarSet, end,start]
+,i]
+[VarSet, gResult,accumulator]
+,string,charToReplace,char]
+
+
+
+[RoutineDef,Process,
+
+
+ // put your duplicate/ Decimate/ reproject /unwrap and create texture from polypaint (use record script)
+	//[VarSet, filename,arrayOfFile(i)]
+		[RoutineCall,LogMessage,[StrMerge,"filename ",filename]]
+	[IPress,Texture:Texture Off]
+	[IPress,Texture:GrabDoc]
+	
+	// save psd
+	[FileNameSetNext,[strmerge,batchFolderPath,"\",filename,".psd"]]
+	[IPress,Texture:Export]
+
+
+	// create args psd & jpg names
+	[VarSet, args1,[FileNameResolvePath,[StrMerge,batchFolderPath,"\",filename,".psd"] ]]
+	[VarSet, args2,[FileNameResolvePath,[StrMerge,batchFolderPath,"\",filename,".jpg"]]]
+	[VarSet, args,[StrMerge,args1," ",args2]]
+	[RoutineCall,LogMessage,[StrMerge,QUOTES,imageMagickExe,QUOTES," ",args]]
+
+	[ShellExecute,[StrMerge,QUOTES,imageMagickExe,QUOTES," ",args]] // ephemeral doesn't work so del command 
+	
+	//[Delay,3]
+	//[IPress, "Tool:Subtool:Del All"]
+
+ ,
+	filename
+]
+
+[IButton," batchstart ","",
+//	[RoutineCall,launchLogExecutable,MTAILPATH,LOGPATH ]
+ 	[RoutineCall, FolderDialog]
+	[RoutineCall, Setup]
+	[VarSet,fileCount,[FileExecute,[Var,ZFILEUTILDLL],"GetFileNumber",batchFolderPath]]//get the number of files/folders
+	[VarDef, arrayOfFile(fileCount)]
+	
+	[RoutineCall,LogMessage,[StrMerge," arraysize ",[VarSize,arrayOfFile ]]]
+ 	[RoutineCall, GetFiles,batchFolderPath,arrayOfFile]
+	//[RoutineCall,process,arrayOfFile]
+	[RoutineCall, LogMessage,[StrMerge,"Del ",batchFolderPath,"\*.psd" ]]
+	[ShellExecute,[StrMerge,"Del ",QUOTES,batchFolderPath,"\*.psd",QUOTES ]]
+	[IReset,,2021]
+]
